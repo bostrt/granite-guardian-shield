@@ -1,0 +1,10 @@
+[project]
+name = "granite_guardian_llama_stack_shield"
+version = "0.0.1"
+description = "Granite Guardian shield external provider for Llama Stack"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "llama-stack>=0.2.9",
+    "pydantic",
+]
