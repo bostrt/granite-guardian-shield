@@ -1,0 +1,5 @@
+adapter:
+  adapter_type: granite_guardian_shield
+  config_class: granite_guardian_shield.config.GraniteGuardianShieldConfig
+  module: granite_guardian_shield
+optional_api_dependencies: []

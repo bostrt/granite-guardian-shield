@@ -1,0 +1,25 @@
+version: "2"
+distribution_spec:
+  description: Minimal Llama Stack build configuration for Granite Guardian and VLLM
+  providers:
+    inference:
+    - remote::vllm
+    vector_io: []
+    safety: []
+    agents:
+    - inline::meta-reference
+    eval: []
+    datasetio: []
+    scoring: []
+    telemetry:
+    - inline::meta-reference
+    tool_runtime: []
+  container_image: "registry.access.redhat.com/ubi9"
+image_type: container
+image_name: my-llama-stack
+additional_pip_packages:
+- blobfile
+- mcp
+- aiosqlite
+- sqlalchemy[asyncio] 
+- "granite_guardian_llama_stack_shield@git+https://github.com/bostrt/granite-guardian-shield.git@main"
