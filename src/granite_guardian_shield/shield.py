@@ -16,9 +16,6 @@ from granite_guardian_shield.models import RiskProbability
 logger = logging.getLogger(__name__)
 
 
-CANNED_RESPONSE_TEXT = "I can't answer that. Can I help with something else?"
-
-
 class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
 
     def __init__(self, config: GraniteGuardianShieldConfig) -> None:
@@ -53,25 +50,34 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
         message: UserMessage = messages[-1]
         logger.debug(f"run_shield::{message.content}")
 
-        guardian_resp: ChatCompletion = await self._openai_client.chat.completions.create(
-            model=self.config.model,
-            temperature=0.0,
-            logprobs=True,
-            top_logprobs=20,
-            messages=[message],
-        )
+        metadatas = []
+        verdicts: list[RiskProbability] = []
+        for risk in self.config.risks:
+            guardian_config = {"risk_name": risk.name}
+            if risk.definition:
+                guardian_config["risk_definition"] = risk.definition
+            guardian_resp: ChatCompletion = await self._openai_client.chat.completions.create(
+                model=self.config.model,
+                temperature=0.0,
+                logprobs=True,
+                top_logprobs=20,
+                messages=[message],
+                extra_body={"chat_template_kwargs": {"guardian_config": guardian_config}},
+            )
 
-        verdict: RiskProbability = parse_output(guardian_resp)
+            verdict = parse_output(guardian_resp)
+            verdicts.append(verdict)
 
-        metadata = verdict.model_dump()
+            metadatas.append(verdict.model_dump())
 
-        if verdict.is_risky:
+        if any([v.is_risky for v in verdicts]):
             return RunShieldResponse(
                 violation=SafetyViolation(
                     user_message=message.content,
                     violation_level=ViolationLevel.ERROR,
-                    metadata=metadata
+                    metadata={"metadata": [metadatas]},
                 )
             )
         else:
+            # TODO Maybe still include results in response without error violationlevel
             return RunShieldResponse()
