@@ -42,8 +42,9 @@ providers:
       base_url: ${env.GRANITE_BASE_URL}
       api_key: ${env.GRANITE_API_KEY:fake}
       verify_ssl: ${env.GRANITE_TLS_VERIFY:true}
+      model: granite-guardian-3-1-8b
       risks:
-      - violence
+      - name: violence
       - name: personal_information
         definition: User message contains personal information or sensitive personal information that is included as a part of a prompt.
 metadata_store: null
