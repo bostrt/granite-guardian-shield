@@ -25,7 +25,7 @@ jobs:
         # Alternatively, omit this to use the Python version declared in pyproject.toml
 
       - name: Install project dependencies
-        run: uv pip install --system --dev
+        run: uv pip install . --group dev
 
       - name: Run tests
         run: uv run pytest --tb=short --disable-warnings
