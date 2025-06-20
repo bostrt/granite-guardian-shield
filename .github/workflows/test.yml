@@ -27,4 +27,4 @@ jobs:
         run: uv sync --frozen
 
       - name: Run tests
-        run: uv run pytest --tb=short --disable-warnings
+        run: uv run python -m pytest --tb=short --disable-warnings
