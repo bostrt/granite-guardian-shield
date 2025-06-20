@@ -361,7 +361,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
-    { name = "llama-stack", specifier = ">=0.2.9" },
+    { name = "llama-stack", specifier = ">=0.2.10" },
     { name = "pydantic" },
 ]
 
