@@ -22,10 +22,9 @@ jobs:
 
       - name: Set up Python ${{ matrix.python-version }}
         run: uv python install ${{ matrix.python-version }}
-        # Alternatively, omit this to use the Python version declared in pyproject.toml
 
       - name: Install project dependencies
-        run: uv pip install . --system --group dev
+        run: uv sync --frozen
 
       - name: Run tests
         run: uv run pytest --tb=short --disable-warnings
