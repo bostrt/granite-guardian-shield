@@ -51,7 +51,7 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
             extra_body={"chat_template_kwargs": {"guardian_config": guardian_config}},
         )
 
-        return parse_output(guardian_resp)
+        return parse_output(guardian_resp, risk)
 
     async def run_shield(
         self,

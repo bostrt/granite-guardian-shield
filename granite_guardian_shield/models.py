@@ -3,15 +3,16 @@ from pydantic import BaseModel, Field, field_validator
 
 class RiskProbability(BaseModel):
     """
-    Model representing the risk output from Granite Guardian 
+    Model representing the risk output from Granite Guardian.
     """
 
-    is_risky: bool = Field(..., description="Granite-Guardian hard yes/no answer")
+    risk_name: str = Field(description="The risk name associated with this risk probability")
+    is_risky: bool = Field(description="Granite Guardian hard yes/no answer")
     safe_confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Probability that prompt is safe"
+        ge=0.0, le=1.0, description="Probability that prompt is safe"
     )
     risky_confidence: float = Field(
-        ..., ge=0.0, le=1.0, description="Probability that prompt is risky"
+        ge=0.0, le=1.0, description="Probability that prompt is risky"
     )
 
     @field_validator('safe_confidence')

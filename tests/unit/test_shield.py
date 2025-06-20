@@ -29,6 +29,7 @@ async def test_run_shield_with_violation(mock_openai_cls, mock_parse_output):
         is_risky=True,
         safe_confidence=0.03,
         risky_confidence=0.97,
+        risk_name="toxicity",
     )
     mock_parse_output.return_value = mock_verdict
 
@@ -65,6 +66,7 @@ async def test_run_shield_no_violation(mock_openai_cls, mock_parse_output):
         is_risky=False,
         safe_confidence=0.95,
         risky_confidence=0.05,
+        risk_name="toxicity",
     )
     mock_parse_output.return_value = mock_verdict
 

@@ -3,6 +3,7 @@ from typing import Tuple
 
 from openai.types.chat.chat_completion import ChatCompletion, ChoiceLogprobs
 
+from granite_guardian_shield.config import Risk
 from granite_guardian_shield.models import RiskProbability
 
 
@@ -69,22 +70,19 @@ def get_probabilities(
     return _softmax2(math.log(safe_prob), math.log(risky_prob))
 
 
-def parse_output(response: ChatCompletion) -> RiskProbability:
+def parse_output(response: ChatCompletion, risk: Risk) -> RiskProbability:
     """
-    Parse Granite-Guardians response into a structured RiskProbability response.
+    Parse Granite Guardian's response into a structured RiskProbability response.
 
     Args:
-        response
-            The ChatCompletion object returned by OpenAI client.
+        response: The ChatCompletion object returned by OpenAI client.
+        risk: represents the risk being checked for
 
     Raises:
         ValueError: Raised if Granite Guardian response doesn't contain `logprobs`.
 
     Returns:
-        RiskProbability
-            is_risky - True if Guardians text answer is “Yes”.
-            safe_confidence - safe probability score from get_probabilities.
-            risky_confidence - risky probability score from get_probabilities.
+        RiskProbability: The output risk probability model 
     """
     label = response.choices[0].message.content.strip().lower()
     p_safe, p_risky = get_probabilities(response.choices[0].logprobs)
@@ -93,4 +91,5 @@ def parse_output(response: ChatCompletion) -> RiskProbability:
         is_risky=(label == "yes"),
         safe_confidence=p_safe,
         risky_confidence=p_risky,
+        risk_name=risk.name
     )

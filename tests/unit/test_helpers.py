@@ -1,6 +1,7 @@
 import math
 import pytest
 
+from granite_guardian_shield.config import Risk
 from granite_guardian_shield.helpers import _softmax2, get_probabilities, parse_output
 from granite_guardian_shield.models import RiskProbability
 
@@ -81,7 +82,7 @@ def test_parse_output_yes_label():
         ]
     )
 
-    result = parse_output(response)
+    result = parse_output(response, Risk(name="test"))
     assert isinstance(result, RiskProbability)
     assert result.is_risky is True
     assert round(result.safe_confidence + result.risky_confidence, 4) == 1.0
