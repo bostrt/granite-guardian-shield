@@ -91,5 +91,6 @@ def parse_output(response: ChatCompletion, risk: Risk) -> RiskProbability:
         is_risky=(label == "yes"),
         safe_confidence=p_safe,
         risky_confidence=p_risky,
-        risk_name=risk.name
+        risk_name=risk.name,
+        risk_definition=risk.definition,
     )

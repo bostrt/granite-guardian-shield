@@ -17,7 +17,6 @@ class Risk(BaseModel):
             "harm_engagement",
             "evasiveness",
             "jailbreak",
-
         ]
     )
     definition: str | None = Field(

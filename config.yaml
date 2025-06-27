@@ -58,6 +58,5 @@ shields:
   shield_id: my_guardian
   provider_shield: null
 server:
-  port: ${env.LLAMA_STACK_PORT:8321}
-external_providers_dir: /.llama/providers.d/
-
+  port: 8321
+external_providers_dir: ./providers.d/

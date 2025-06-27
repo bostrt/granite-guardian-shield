@@ -10,10 +10,14 @@ virtualenv v
 source v/bin/activate
 pip install -e .
 
-export PYPI_VERSION=0.2.10
-export CONTAINER_BINARY=podman
 llama stack build --config build.yaml
 
-# Make your own secrets.env file!
-podman run --rm -it -v ./config.yaml:/app/run.yaml:ro,z -v ./providers.d/:/.llama/providers.d:ro,z --env-file secrets.env -p 8321:8321 my-llama-stack:${PYPI_VERSION}
+# Create your own config.yaml or try setting each of the environment vars
+llama stack run --image-type venv \
+--env VLLM_URL=https://example.com/v1 \
+--env VLLM_API_TOKEN=SECRET-TOKEN \
+--env INFERENCE_MODEL=my-model \
+--env GRANITE_API_KEY=SECRET-TOKEN \
+--env GRANITE_BASE_URL=https://example2.com/v1 \
+./config.yaml
 ```
