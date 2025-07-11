@@ -1,47 +1,87 @@
-from unittest.mock import AsyncMock, patch
-
 import pytest
-from llama_stack.apis.inference import UserMessage
-from llama_stack.apis.safety import ViolationLevel
+from llama_stack.apis.inference import Message, UserMessage
+from llama_stack.apis.safety import Shield, ViolationLevel
 
-from granite_guardian_shield.config import GraniteGuardianShieldConfig, Risk
+from granite_guardian_shield.config import Risk
+from granite_guardian_shield.inference import Inference
 from granite_guardian_shield.models import RiskProbability
 from granite_guardian_shield.shield import GraniteGuardianShield
 
+fake_shield = Shield(
+    identifier="example",
+    provider_id="example",
+    provider_resource_id="example",
+    params={
+        "risks": [
+            {
+                "name": "harm",
+            }
+        ]
+    },
+)
+
+
+class FakeInference(Inference):
+    def __init__(self, trigger_violation: bool):
+        self.trigger_violation = trigger_violation
+
+    async def run(self, risk: Risk, messages: list[Message]) -> RiskProbability:
+        if self.trigger_violation:
+            return RiskProbability(
+                risk_name="harm",
+                is_risky=True,
+                risky_confidence=0.95,
+                safe_confidence=0.01,
+            )
+        else:
+            return RiskProbability(
+                risk_name="harm",
+                is_risky=False,
+                risky_confidence=0.01,
+                safe_confidence=0.95,
+            )
+
 
 @pytest.mark.asyncio
-@patch("granite_guardian_shield.shield.parse_output")
-@patch("granite_guardian_shield.shield.AsyncOpenAI")
-async def test_run_shield_with_violation(mock_openai_cls, mock_parse_output):
-    # Proper Risk object
-    mock_config = GraniteGuardianShieldConfig(
-        api_key="fake",
-        base_url="https://example.com",
-        model="test",
-        verify_ssl=False,
-        risks=[
-            Risk(name="toxicity", definition="Prompt contains toxic language.")
-        ]
+async def test_register_shield_missing_risks():
+    missing_risks = Shield(
+        identifier="example",
+        provider_id="example",
+        provider_resource_id="exapmle",
+        params={"risks": []},
     )
 
-    # Return a risky verdict
-    mock_verdict = RiskProbability(
-        is_risky=True,
-        safe_confidence=0.03,
-        risky_confidence=0.97,
-        risk_name="toxicity",
+    gg_shield = GraniteGuardianShield(FakeInference(trigger_violation=False))
+    with pytest.raises(Exception):
+        await gg_shield.register_shield(missing_risks)
+
+
+@pytest.mark.asyncio
+async def test_register_shield_missing_risk_definition():
+    missing_risk_def = Shield(
+        identifier="example",
+        provider_id="example",
+        provider_resource_id="exapmle",
+        params={"risks": [
+            {
+                "name": "custom_risk"
+                # No risk definition!
+            }
+        ]},
     )
-    mock_parse_output.return_value = mock_verdict
 
-    # Mock OpenAI client
-    mock_openai_instance = AsyncMock()
-    mock_openai_cls.return_value = mock_openai_instance
-    mock_openai_instance.chat.completions.create.return_value = AsyncMock()
+    gg_shield = GraniteGuardianShield(FakeInference(trigger_violation=False))
+    with pytest.raises(Exception):
+        await gg_shield.register_shield(missing_risk_def)
 
-    shield = GraniteGuardianShield(mock_config)
+
+@pytest.mark.asyncio
+async def test_run_shield_with_violation():
+    gg_shield = GraniteGuardianShield(FakeInference(trigger_violation=True))
+    await gg_shield.register_shield(fake_shield)
     user_msg = UserMessage(content="You suck", role="user")
 
-    result = await shield.run_shield("shield-id", [user_msg])
+    result = await gg_shield.run_shield(fake_shield.identifier, [user_msg])
 
     assert result.violation is not None
     assert result.violation.violation_level == ViolationLevel.ERROR
@@ -49,34 +89,11 @@ async def test_run_shield_with_violation(mock_openai_cls, mock_parse_output):
 
 
 @pytest.mark.asyncio
-@patch("granite_guardian_shield.shield.parse_output")
-@patch("granite_guardian_shield.shield.AsyncOpenAI")
-async def test_run_shield_no_violation(mock_openai_cls, mock_parse_output):
-    mock_config = GraniteGuardianShieldConfig(
-        api_key="fake",
-        base_url="https://example.com",
-        model="test",
-        verify_ssl=False,
-        risks=[
-            Risk(name="toxicity", definition="Prompt contains toxic language.")
-        ]
-    )
-
-    mock_verdict = RiskProbability(
-        is_risky=False,
-        safe_confidence=0.95,
-        risky_confidence=0.05,
-        risk_name="toxicity",
-    )
-    mock_parse_output.return_value = mock_verdict
-
-    mock_openai_instance = AsyncMock()
-    mock_openai_cls.return_value = mock_openai_instance
-    mock_openai_instance.chat.completions.create.return_value = AsyncMock()
-
-    shield = GraniteGuardianShield(mock_config)
+async def test_run_shield_no_violation():
+    gg_shield = GraniteGuardianShield(FakeInference(trigger_violation=False))
+    await gg_shield.register_shield(fake_shield)
     user_msg = UserMessage(content="Have a nice day!", role="user")
 
-    result = await shield.run_shield("shield-id", [user_msg])
+    result = await gg_shield.run_shield(fake_shield.identifier, [user_msg])
 
     assert result.violation is None

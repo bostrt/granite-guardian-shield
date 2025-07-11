@@ -1,70 +1,29 @@
 import asyncio
-import logging
-from typing import Any, Protocol
+from typing import Any
 
-import httpx
-from llama_stack.apis.inference import Message, UserMessage
+from llama_stack.apis.inference import (CompletionMessage, Message,
+                                        ToolResponseMessage, UserMessage)
 from llama_stack.apis.safety import (RunShieldResponse, Safety,
                                      SafetyViolation, ViolationLevel)
 from llama_stack.apis.shields import Shield
+from llama_stack.log import get_logger
 from llama_stack.providers.datatypes import ShieldsProtocolPrivate
-from openai import AsyncOpenAI
-from openai.types.chat.chat_completion import ChatCompletion
 
-from granite_guardian_shield.config import GraniteGuardianShieldConfig, Risk
-from granite_guardian_shield.helpers import parse_output
-from granite_guardian_shield.models import RiskProbability
+from granite_guardian_shield.config import Risk
+from granite_guardian_shield.inference import Inference
+from granite_guardian_shield.risk_assessor import (RiskAssessor,
+                                                   RiskAssessorFactory)
 
-logger = logging.getLogger(__name__)
-
-
-class Evaluator(Protocol):
-    async def evaluate(self, message: Message) -> RiskProbability:
-        ...
-
-
-# TODO class ContextRiskEvaluator(Evaluator)
-
-
-class SimpleRiskEvaluator(Evaluator):
-    def __init__(self, risk: Risk, openai_client: AsyncOpenAI, model: str):
-        self.risk = risk
-        self.openai_client = openai_client
-        self.model = model
-
-    async def evaluate(self, message: Message) -> RiskProbability:
-        guardian_config = {"risk_name": self.risk.name}
-        if self.risk.definition:
-            guardian_config["risk_definition"] = self.risk.definition
-
-        response: ChatCompletion = await self.openai_client.chat.completions.create(
-            model=self.model,
-            temperature=0.0,
-            logprobs=True,
-            top_logprobs=20,
-            messages=[message],
-            extra_body={"chat_template_kwargs": {"guardian_config": guardian_config}},
-        )
-
-        return parse_output(response, self.risk)
+logger = get_logger(name=__name__, category="safety")
 
 
 class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
-
-    def __init__(self, config: GraniteGuardianShieldConfig) -> None:
-        self.config = config
-        _api_key = self.config.api_key
-        self._openai_client: AsyncOpenAI = AsyncOpenAI(
-            base_url=self.config.base_url,
-            api_key=_api_key.get_secret_value() if _api_key else None,
-            http_client=httpx.AsyncClient(verify=self.config.verify_ssl),
-        )
-
-        # Create one RiskEvaluator per risk
-        self._evaluators = [
-            SimpleRiskEvaluator(risk, self._openai_client, self.config.model)
-            for risk in self.config.risks
-        ]
+    """
+    Manages registration and running of Shields
+    """
+    def __init__(self, inference: Inference) -> None:
+        self._shield_risk_map: dict[str, list[RiskAssessor]] = dict()
+        self.inference = inference
 
     async def initialize(self) -> None:
         pass
@@ -73,7 +32,21 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
         pass
 
     async def register_shield(self, shield: Shield) -> None:
-        pass
+        """
+        Called by Llama Stack per shield configuration. Validates the risk configuration and stores in
+        internal shield/risk mapping.
+        """
+        if shield.params is None or "risks" not in shield.params or not shield.params.get("risks"):
+            raise ValueError(f"No risks defined for {shield.shield_id}")
+        else:
+            risk_configs = shield.params.get("risks", [])
+            assessor_factory = RiskAssessorFactory(self.inference)
+            risks: list[RiskAssessor] = []
+            for risk_config in risk_configs:
+                risk = Risk.model_validate(risk_config)
+                risks.append(assessor_factory.create_assessor(risk))
+            self._shield_risk_map[shield.shield_id] = risks
+        logger.info(f"Registered {shield.shield_id}")
 
     async def run_shield(
         self,
@@ -81,9 +54,26 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
         messages: list[Message],
         params: dict[str, Any] = {},
     ) -> RunShieldResponse:
-        message: UserMessage = messages[-1]
+        """
+        Run a single Shield for the updated list of messages in a session. This may evaluate multiple risks and run
+        multiple inferences depending on user's Shield configuration.
+        """
+        # Peek at the last message
+        msg = messages[-1]
 
-        tasks = [evaluator.evaluate(message) for evaluator in self._evaluators]
+        if isinstance(msg, UserMessage):
+            # Handle with input safety guardrails
+            logger.debug(f"----------------------{msg}")
+        elif isinstance(msg, CompletionMessage):
+            # Handle with the output safety guardrails
+            logger.debug(f"++++++++++++++++++++++ {msg}")
+        elif isinstance(msg, ToolResponseMessage):
+            logger.debug(f"===================== {msg}")
+        else:
+            logger.debug(f"run_shield::unknown message type::{msg.model_dump_json()}")
+            return RunShieldResponse()
+
+        tasks = [assessor.run(messages) for assessor in self._shield_risk_map[shield_id]]
         verdicts = await asyncio.gather(*tasks)
         violation_metadatas = []
 
@@ -94,7 +84,7 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
         if violation_metadatas:
             return RunShieldResponse(
                 violation=SafetyViolation(
-                    user_message=message.content,
+                    user_message=msg.content,
                     violation_level=ViolationLevel.ERROR,
                     metadata={"metadata": violation_metadatas},
                 )

@@ -4,6 +4,7 @@ distribution_spec:
   providers:
     inference:
     - remote::vllm
+    - remote::ollama
     vector_io: []
     safety: []
     agents:
@@ -14,11 +15,12 @@ distribution_spec:
     telemetry:
     - inline::meta-reference
     tool_runtime: []
-  container_image: "registry.access.redhat.com/ubi9"
+image_name: ls-granite-gaurdian
 image_type: venv
-image_name: my-llama-stack
 additional_pip_packages:
 - blobfile
 - mcp
 - aiosqlite
 - sqlalchemy[asyncio] 
+- opentelemetry-api
+- opentelemetry-sdk

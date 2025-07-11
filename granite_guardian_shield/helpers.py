@@ -82,10 +82,14 @@ def parse_output(response: ChatCompletion, risk: Risk) -> RiskProbability:
         ValueError: Raised if Granite Guardian response doesn't contain `logprobs`.
 
     Returns:
-        RiskProbability: The output risk probability model 
+        RiskProbability: The output risk probability model
     """
     label = response.choices[0].message.content.strip().lower()
-    p_safe, p_risky = get_probabilities(response.choices[0].logprobs)
+    try:
+        p_safe, p_risky = get_probabilities(response.choices[0].logprobs)
+    except ValueError:
+        p_safe = None
+        p_risky = None
 
     return RiskProbability(
         is_risky=(label == "yes"),

@@ -1,0 +1,67 @@
+version: "2"
+image_name: ls-granite-gaurdian
+apis:
+- agents
+- inference
+- safety
+- vector_io
+- tool_runtime
+- telemetry
+providers:
+  inference:
+  - provider_id: vllm-inference
+    provider_type: remote::vllm
+    config:
+      url: ${env.VLLM_URL}
+      max_tokens: ${env.VLLM_MAX_TOKENS:=4096}
+      api_token: ${env.VLLM_API_TOKEN:=fake}
+      tls_verify: ${env.VLLM_TLS_VERIFY:=true}
+  agents:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      persistence_store:
+        type: sqlite
+        db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/starter}/agents_store.db
+      responses_store:
+        type: sqlite
+        db_path: ${env.SQLITE_STORE_DIR:=~/.llama/distributions/starter}/responses_store.db
+  telemetry:
+  - provider_id: meta-reference
+    provider_type: inline::meta-reference
+    config:
+      service_name: ${env.OTEL_SERVICE_NAME:=llama-stack}
+      sinks: ${env.TELEMETRY_SINKS:=console,sqlite}
+      sqlite_db_path: ${env.SQLITE_DB_PATH:=~/.llama/distributions/remote-vllm/trace_store.db}
+  tool_runtime: []
+  safety:
+  - provider_id: granite_guardian_shield
+    provider_type: remote::granite_guardian_shield
+    config:
+      base_url: ${env.GRANITE_BASE_URL}
+      api_key: ${env.GRANITE_API_KEY:=fake}
+      verify_ssl: ${env.GRANITE_TLS_VERIFY:=true}
+      model: ${env.GRANITE_GUARDIAN_MODEL_NAME:=granite-guardian-3-1-8b}
+metadata_store: null
+models:
+- metadata: {}
+  model_id: ${env.INFERENCE_MODEL}
+  provider_id: vllm-inference
+  model_type: llm
+shields:
+- provider_id: granite_guardian_shield
+  shield_id: input_guardian
+  params:
+    risks:
+      - name: violence
+      - name: personal_information
+        definition: User message contains personal information or sensitive personal information.
+- provider_id: granite_guardian_shield
+  shield_id: output_guardian
+  params:
+    risks:
+      - name: personal_information
+        definition: User message contains personal information or sensitive personal information.
+server:
+  port: 8321
+external_providers_dir: ./providers.d/

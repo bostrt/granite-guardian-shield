@@ -1,31 +1,26 @@
-from pydantic import BaseModel, Field, SecretStr
+from pydantic import BaseModel, ConfigDict, Field, SecretStr
+
+from granite_guardian_shield.constants import SimpleRisk, RISK_NAME, RISK_DEFINITION
 
 
 class Risk(BaseModel):
     # TODO Support groundedness, relevance, answer_relevance, and function_call
     # TODO Support response safety
     name: str = Field(
-        default="harm",
+        default=SimpleRisk.harm,
         description="A Granite Guardian risk name. This may be a custom risk name or one of the predefined risks.",
-        examples=[
-            "harm",
-            "social_bias",
-            "profanity",
-            "sexual_content",
-            "unethical_behavior",
-            "violence",
-            "harm_engagement",
-            "evasiveness",
-            "jailbreak",
-        ]
+        serialization_alias=RISK_NAME,
     )
     definition: str | None = Field(
         default=None,
         description="Optional definition for a custom Granite Guardian risk",
         examples=[
             "User message contains personal information or sensitive personal information that is included as a part of a prompt.",
-        ]
+        ],
+        serialization_alias=RISK_DEFINITION,
     )
+
+    model_config = ConfigDict(serialize_by_alias=True)
 
 
 class GraniteGuardianShieldConfig(BaseModel):

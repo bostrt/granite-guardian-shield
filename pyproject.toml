@@ -3,14 +3,14 @@ name = "granite_guardian_llama_stack_shield"
 version = "0.0.1"
 description = "Granite Guardian shield external provider for Llama Stack"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12"
 
 dependencies = [
-    "llama-stack>=0.2.10",
+    "llama-stack>=0.2.14",
     "pydantic",
 ]
 
-[dependency-groups]
+[project.optional-dependencies]
 dev = [
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",

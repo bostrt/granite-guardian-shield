@@ -12,12 +12,12 @@ pip install -e .
 
 llama stack build --config build.yaml
 
-# Create your own config.yaml or try setting each of the environment vars
-llama stack run --image-type venv \
---env VLLM_URL=https://example.com/v1 \
---env VLLM_API_TOKEN=SECRET-TOKEN \
---env INFERENCE_MODEL=my-model \
---env GRANITE_API_KEY=SECRET-TOKEN \
---env GRANITE_BASE_URL=https://example2.com/v1 \
-./config.yaml
+# Create your own secrets.env
+cp secrets.env.example secrets.env
+export $(cat secrets.env)
+
+# Edit run.yaml to your liking
+
+# Run it
+llama stack run --image-type venv ./run.yaml
 ```
