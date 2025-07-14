@@ -1,3 +1,4 @@
+from llama_stack.apis.safety import ViolationLevel
 from pydantic import BaseModel, Field, field_validator
 
 
@@ -13,13 +14,17 @@ class RiskProbability(BaseModel):
         description="Custom risk definition", default=None
     )
     is_risky: bool = Field(
-        description="Granite Guardian default determination if input is risky"
+        description="Whether or not the message is consider risky"
     )
     safe_confidence: float | None = Field(
-        ge=0.0, le=1.0, description="Probability that prompt is safe, if available"
+        ge=0.0, le=1.0, description="Probability that message is safe, if available"
     )
     risky_confidence: float | None = Field(
-        ge=0.0, le=1.0, description="Probability that prompt is risky, if available"
+        ge=0.0, le=1.0, description="Probability that message is risky, if available"
+    )
+    violation_level: ViolationLevel = Field(
+        default=ViolationLevel.ERROR,
+        description="The violation level for this risk. Only error level violations will be raised in API responses."
     )
 
     @field_validator("safe_confidence")

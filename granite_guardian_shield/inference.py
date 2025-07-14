@@ -28,6 +28,7 @@ logger = get_logger(name=__name__, category="safety")
 # NOTE https://github.com/meta-llama/llama-stack/issues/2720
 # NOTE
 
+
 class Inference(ABC):
     @abstractmethod
     async def run(self, risk: Risk, messages: list[Message]) -> RiskProbability:

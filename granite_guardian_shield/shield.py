@@ -10,6 +10,7 @@ from llama_stack.log import get_logger
 from llama_stack.providers.datatypes import ShieldsProtocolPrivate
 
 from granite_guardian_shield.config import Risk
+from granite_guardian_shield.helpers import get_higher_violation_level
 from granite_guardian_shield.inference import Inference
 from granite_guardian_shield.risk_assessor import (RiskAssessor,
                                                    RiskAssessorFactory)
@@ -77,15 +78,18 @@ class GraniteGuardianShield(Safety, ShieldsProtocolPrivate):
         verdicts = await asyncio.gather(*tasks)
         violation_metadatas = []
 
+        highest_violation_level = ViolationLevel.INFO
         for v in verdicts:
             if v.is_risky:
-                violation_metadatas.append(v.model_dump_json())
+                violation_metadatas.append(v.model_dump())
+                higher_violation_level = get_higher_violation_level(highest_violation_level, v.violation_level)
+                highest_violation_level = higher_violation_level
 
         if violation_metadatas:
             return RunShieldResponse(
                 violation=SafetyViolation(
                     user_message=msg.content,
-                    violation_level=ViolationLevel.ERROR,
+                    violation_level=highest_violation_level,
                     metadata={"metadata": violation_metadatas},
                 )
             )

@@ -51,7 +51,8 @@ class AnswerContextRelevanceRiskAssessor(RiskAssessor):
         # Peek at last message
         msg = messages[-1]
         if isinstance(msg, CompletionMessage):
-            pass
+            # return RiskProbability(risk_name=self.risk.name, risk_definition=None, is_risky=False, safe_confidence=0, risky_confidence=0)
+            return await self.ggi.run(self.risk, messages)
         else:
             raise RuntimeError("Improper message stream for answer context relevance evaulator")
 

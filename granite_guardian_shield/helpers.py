@@ -2,6 +2,7 @@ import math
 from typing import Tuple
 
 from openai.types.chat.chat_completion import ChatCompletion, ChoiceLogprobs
+from llama_stack.apis.safety import ViolationLevel
 
 from granite_guardian_shield.config import Risk
 from granite_guardian_shield.models import RiskProbability
@@ -91,10 +92,32 @@ def parse_output(response: ChatCompletion, risk: Risk) -> RiskProbability:
         p_safe = None
         p_risky = None
 
+    # Default is_risky to whatever the Granite Guardian model says
+    is_risky = (label == "yes")
+
+    # If user configured a violation threshold, modify is_risky
+    if risk.violation_threshold and p_risky:
+        is_risky = (p_risky >= risk.violation_threshold)
+
     return RiskProbability(
-        is_risky=(label == "yes"),
+        is_risky=is_risky,
         safe_confidence=p_safe,
         risky_confidence=p_risky,
         risk_name=risk.name,
         risk_definition=risk.definition,
+        violation_level=risk.violation_level,
     )
+
+
+_level_order = {
+    ViolationLevel.INFO: 1,
+    ViolationLevel.WARN: 2,
+    ViolationLevel.ERROR: 3,
+}
+
+
+def get_higher_violation_level(left: ViolationLevel, right: ViolationLevel) -> ViolationLevel:
+    if _level_order[left] > _level_order[right]:
+        return left
+    else:
+        return right
